@@ -9,7 +9,7 @@ set -e
 set -v
 
 export MAX_JOBS=10
-TGI_VERSION='0.9.3'
+TGI_VERSION='1.0.0'
 WORK_DIR=$SLURM_TMPDIR/workspace
 
 # debug info
@@ -37,8 +37,7 @@ mkdir -p $RELEASE_DIR/bin
 # download source
 git clone https://github.com/huggingface/text-generation-inference.git $WORK_DIR/text-generation-inference
 cd $WORK_DIR/text-generation-inference
-git checkout '2efd46ef95991a227c9ec79821e6008fdfeb901d' -b v${TGI_VERSION}-branch
-#git checkout tags/v${TGI_VERSION} -b v${TGI_VERSION}-branch
+git checkout tags/v${TGI_VERSION} -b v${TGI_VERSION}-branch
 
 ####
 # download and compile python dependencies
