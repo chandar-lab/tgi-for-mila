@@ -97,24 +97,30 @@ You can port-forward via ssh, such that you have access to the server locally. F
 ssh -N -f -L localhost:20001:cn-g017:10148 mila
 ```
 
+### Required resources
+
+This is a list of configurations that are confirmed to work on the Mila cluster. Less resources may
+be possible. If you are using the server interactively, you may benifit from using
+`--partition=short-unkillable` which allow a 3 hour, 4 GPU job. The specific memory and compute
+utilization, will depend on the inputs. Those numbers are just for one large input. TGI will batch
+multiple inputs of similar lengths.
+
+| `MODEL_ID`                     | GPUs                    | Mila slurm flags                                                             | Comp. Util | Mem Util. |
+| ------------------------------ | ----------------------- | ---------------------------------------------------------------------------- | ---------- | --------- |
+| meta-llama/Llama-2-70b-chat-hf | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=2 --mem=128G --constraint=ampere&nvlink` | 97%        | 82%       |
+| meta-llama/Llama-2-13b-chat-hf | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=1 --mem=128G --constraint=ampere`        | 96%        | 73%       |
+| meta-llama/Llama-2-7b-chat-hf  | 3/7 A100 (80GB) (=40GB) | `--gres=gpu:a100l.3 --mem=24G --constraint=ampere`                           |            |           |
+| tiiuae/falcon-40b-instruct     | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=2 --mem=128G --constraint=ampere&nvlink` | 96 %       | 76 %      |
+| tiiuae/falcon-7b-instruct      | 3/7 A100 (80GB) (=40GB) | `--gres=gpu:a100l.3 --mem=24G --constraint=ampere`                           |            |           |
+| google/flan-t5-xxl             | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=1 --mem=128G --constraint=ampere`        |            |           |
+| bigscience/bloomz              |                         |                                                                              |            |           |
+
 ### Extra arguments:
 
 Besides `RELEASE_DIR` and `TGI_DIR`, the start scripts takes the following arguments:
 
 **`MODEL_ID`**
-The name of the model to load. Some examples:
-- bigscience/bloomz
-- bigscience/bloomz-560m
-- meta-llama/Llama-2-70b-chat-hf
-- meta-llama/Llama-2-13b-chat-hf
-- meta-llama/Llama-2-7b-chat-hf
-- google/flan-t5-xxl
-- google/flan-t5-xl
-- google/flan-t5-large
-- google/flan-t5-base
-- google/flan-t5-small
-- tiiuae/falcon-40b-instruct
-- tiiuae/falcon-7b-instruct
+The name of the model to load.
 
 **`MAX_BEST_OF`**
 This is the maximum allowed value for clients to set `best_of`. Best of makes `n` generations at the same time,
@@ -139,3 +145,4 @@ This is the most important value to set as it defines the "memory budget" of run
 
 **`QUANTIZE`**
 Whether you want the model to be quantized. This will use `bitsandbytes` for quantization on the fly, or `gptq`
+ |
