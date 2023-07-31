@@ -55,9 +55,9 @@ git remote add origin "${hf_url}/${MODEL_ID}"
 
 # do not pull .bin files if .safetensors exists
 if ls *.safetensors 1> /dev/null 2>&1; then
-  git lfs pull --exclude "*.bin,.h5,*.msgpack,events.*,/logs,/coreml"
+  git lfs pull --exclude "*.bin,*.h5,*.msgpack,events.*,/logs,/coreml"
 else
-  git lfs pull --exclude "**.h5,*.msgpack,events.*,/logs,/coreml"
+  git lfs pull --exclude "*.h5,*.msgpack,events.*,/logs,/coreml"
 fi
 git remote rm origin  # remove token reference
 set -e
