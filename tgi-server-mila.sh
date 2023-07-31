@@ -2,14 +2,12 @@
 #SBATCH -J tgi-server
 #SBATCH --output=%x.%j.out
 #SBATCH --cpus-per-task=4
-#SBATCH --gres=gpu:a100l.3
+#SBATCH --gpus-per-task=1
+#SBATCH --ntasks=1
 #SBATCH --constraint=ampere
-#SBATCH --partition=unkillable
 #SBATCH --mem=24G
 #SBATCH --time=2:59:00
 set -e
-
-module load gcc/9.3.0
 
 # Create enviorment
 eval "$(~/bin/micromamba shell hook -s posix)"

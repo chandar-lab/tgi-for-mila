@@ -3,7 +3,8 @@
 #SBATCH -J tgi-server
 #SBATCH --output=%x.%j.out
 #SBATCH --cpus-per-task=6
-#SBATCH --gres=gpu:a100:1
+#SBATCH --gpus-per-task=1
+#SBATCH --ntasks=1
 #SBATCH --mem=24G
 #SBATCH --time=2:59:00
 set -e

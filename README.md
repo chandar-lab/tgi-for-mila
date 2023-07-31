@@ -109,9 +109,9 @@ multiple inputs of similar lengths.
 | ------------------------------ | ----------------------- | ---------------------------------------------------------------------------- | ---------- | --------- |
 | meta-llama/Llama-2-70b-chat-hf | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=2 --mem=128G --constraint=ampere&nvlink` | 97%        | 82%       |
 | meta-llama/Llama-2-13b-chat-hf | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=1 --mem=128G --constraint=ampere`        | 96%        | 73%       |
-| meta-llama/Llama-2-7b-chat-hf  | 3/7 A100 (80GB) (=40GB) | `--gres=gpu:a100l.3 --mem=24G --constraint=ampere`                           |            |           |
+| meta-llama/Llama-2-7b-chat-hf  | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=1=a100l.3 --mem=24G --constraint=ampere`  |            |           |
 | tiiuae/falcon-40b-instruct     | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=2 --mem=128G --constraint=ampere&nvlink` | 96 %       | 76 %      |
-| tiiuae/falcon-7b-instruct      | 3/7 A100 (80GB) (=40GB) | `--gres=gpu:a100l.3 --mem=24G --constraint=ampere`                           |            |           |
+| tiiuae/falcon-7b-instruct      | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=1=a100l.3 --mem=24G --constraint=ampere`  |            |           |
 | google/flan-t5-xxl             | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=1 --mem=128G --constraint=ampere`        |            |           |
 | bigscience/bloomz              |                         |                                                                              |            |           |
 
