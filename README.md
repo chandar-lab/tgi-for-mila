@@ -58,7 +58,7 @@ sbatch --export=ALL,RELEASE_DIR=$HOME/tgi-release,TGI_DIR=$SCRATCH/tgi,MODEL_ID=
 Or use the bash script directly:
 
 ```bash
-RELEASE_DIR=$HOME/tgi-release,TGI_DIR=$SCRATCH/tgi,MODEL_ID=tiiuae/falcon-7b-instruct bash start-native-{mila,cc}.sh
+RELEASE_DIR=$HOME/tgi-release,TGI_DIR=$SCRATCH/tgi,MODEL_ID=tiiuae/falcon-7b-instruct bash tgi-server-{mila,cc}.sh
 ```
 
 Remember to chose either mila or cc (compute canada) accordingly.
@@ -115,12 +115,25 @@ multiple inputs of similar lengths.
 | google/flan-t5-xxl             | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=1 --mem=128G --constraint=ampere`        |            |           |
 | bigscience/bloomz              |                         |                                                                              |            |           |
 
-### Extra arguments:
+### Arguments:
+
+#### Required
 
 Besides `RELEASE_DIR` and `TGI_DIR`, the start scripts takes the following arguments:
 
+**`RELEASE_DIR`**
+Points to the directory where the compiled files exists. Needs to be the same for every script. Recommended
+  value `$HOME/tgi-release`.
+
+
+**`TGI_DIR`**
+Points to the directory where model weights and configurations are saved. Needs to be the same for the
+  `tgi-download` and `tgi-server` scripts. Recommended value `$SCRATCH/tgi`.
+
 **`MODEL_ID`**
-The name of the model to load.
+The name of the model to load or download. When downloading, the model will be downloaded from `hf.co/$MODEL_ID`.
+
+#### Optional
 
 **`MAX_BEST_OF`**
 This is the maximum allowed value for clients to set `best_of`. Best of makes `n` generations at the same time,
@@ -145,4 +158,3 @@ This is the most important value to set as it defines the "memory budget" of run
 
 **`QUANTIZE`**
 Whether you want the model to be quantized. This will use `bitsandbytes` for quantization on the fly, or `gptq`
- |
