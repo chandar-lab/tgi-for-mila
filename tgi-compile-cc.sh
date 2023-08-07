@@ -12,8 +12,23 @@ export MAX_JOBS=10
 TGI_VERSION='1.0.0'
 WORK_DIR=$SLURM_TMPDIR/workspace
 
+# Default config
+if [ -z "${RELEASE_DIR}" ]; then
+    RELEASE_DIR=$HOME/tgi-release
+fi
+if [ -z "${TGI_DIR}" ]; then
+    TGI_DIR=$SCRATCH/tgi
+fi
+if [ -z "${TMP_PYENV}" ]; then
+    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+fi
+if [ -z "${WORK_DIR}" ]; then
+    WORK_DIR=$SLURM_TMPDIR/workspace
+fi
+
 # debug info
 echo "Storing files in $(realpath $RELEASE_DIR)"
+mkdir -p $WORK_DIR
 
 # Load modules
 module load python/3.11 gcc/11.3.0 git-lfs/3.3.0 rust/1.65.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163
@@ -21,14 +36,13 @@ export CC=$(which gcc)
 export CXX=$(which g++)
 
 # Create environment
-virtualenv --app-data $SCRATCH/virtualenv --no-download $SLURM_TMPDIR/tgl-env
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
 set +v
-source $SLURM_TMPDIR/tgl-env/bin/activate
+source $TMP_PYENV/bin/activate
 set -v
 python -m pip install --no-index -U pip setuptools wheel build
 
 # Create dirs
-mkdir -p $WORK_DIR
 rm -rf $RELEASE_DIR
 mkdir -p $RELEASE_DIR/python_deps
 mkdir -p $RELEASE_DIR/python_ins

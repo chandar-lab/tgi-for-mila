@@ -9,12 +9,23 @@ set -e
 
 echo "Downloading ${MODEL_ID}"
 
+# Default config
+if [ -z "${RELEASE_DIR}" ]; then
+    RELEASE_DIR=$HOME/tgi-release
+fi
+if [ -z "${TGI_DIR}" ]; then
+    TGI_DIR=$SCRATCH/tgi
+fi
+if [ -z "${TMP_PYENV}" ]; then
+    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+fi
+
 # Load modules
 module load python/3.11 gcc/11.3.0 git-lfs/3.3.0 rust/1.65.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163
 
 # create env
-virtualenv --app-data $SCRATCH/virtualenv --no-download $SLURM_TMPDIR/tgl-env
-source $SLURM_TMPDIR/tgl-env/bin/activate
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
+source $TMP_PYENV/bin/activate
 python -m pip install --no-index -U pip setuptools wheel build
 
 # install

@@ -10,36 +10,49 @@ set -v
 
 export MAX_JOBS=4
 TGI_VERSION='1.0.0'
-WORK_DIR=$SLURM_TMPDIR/workspace
+
+# Default config
+if [ -z "${RELEASE_DIR}" ]; then
+    RELEASE_DIR=$HOME/tgi-release
+fi
+if [ -z "${TGI_DIR}" ]; then
+    TGI_DIR=$SCRATCH/tgi
+fi
+if [ -z "${TMP_PYENV}" ]; then
+    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+fi
+if [ -z "${WORK_DIR}" ]; then
+    WORK_DIR=$SLURM_TMPDIR/workspace
+fi
 
 # debug info
 echo "Storing files in $(realpath $RELEASE_DIR)"
+mkdir -p $WORK_DIR
 
 # Create environment
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $SLURM_TMPDIR/tgl-env -c conda-forge python=3.11
-micromamba activate $SLURM_TMPDIR/tgl-env
+micromamba create -y -p $TMP_PYENV -c conda-forge python=3.11
+micromamba activate $TMP_PYENV
 micromamba config append channels conda-forge
 micromamba config append channels nodefaults
 micromamba install -y 'ninja=1' 'git-lfs=3.3' 'pytorch==2.0.1' 'pytorch-cuda=11.7' 'cuda-nvcc=11.7' 'cudatoolkit=11.7' 'cuda-libraries=11.7' 'cuda-libraries-dev=11.7' 'cudnn=8.8' 'openssl=3' 'gcc=11' 'gxx=11' -c pytorch -c nvidia
-export LD_LIBRARY_PATH=$SLURM_TMPDIR/tgl-env/lib:$LD_LIBRARY_PATH
-export CPATH=$SLURM_TMPDIR/tgl-env/include:$CPATH
-export LIBRARY_PATH=$SLURM_TMPDIR/tgl-env/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
+export CPATH=$TMP_PYENV/include:$CPATH
+export LIBRARY_PATH=$TMP_PYENV/lib:$LIBRARY_PATH
 export CC=$(which gcc)
 export CXX=$(which g++)
 
 # install rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output $SLURM_TMPDIR/rustup.sh
-RUSTUP_HOME=$SLURM_TMPDIR/.rustup CARGO_HOME=$SLURM_TMPDIR/.cargo sh $SLURM_TMPDIR/rustup.sh --no-modify-path -y
-export PATH=$SLURM_TMPDIR/.cargo/bin:$PATH
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output $WORK_DIR/rustup.sh
+RUSTUP_HOME=$WORK_DIR/.rustup CARGO_HOME=$WORK_DIR/.cargo sh $WORK_DIR/rustup.sh --no-modify-path -y
+export PATH=$WORK_DIR/.cargo/bin:$PATH
 
 # install protoc
-curl -L https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip --output $SLURM_TMPDIR/protoc-23.4-linux-x86_64.zip
-unzip $SLURM_TMPDIR/protoc-23.4-linux-x86_64.zip -d $SLURM_TMPDIR/.protoc
-export PATH="$SLURM_TMPDIR/.protoc/bin:$PATH"
+curl -L https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip --output $WORK_DIR/protoc-23.4-linux-x86_64.zip
+unzip $WORK_DIR/protoc-23.4-linux-x86_64.zip -d $WORK_DIR/.protoc
+export PATH="$WORK_DIR/.protoc/bin:$PATH"
 
 # Create dirs
-mkdir -p $WORK_DIR
 rm -rf $RELEASE_DIR
 mkdir -p $RELEASE_DIR/python_deps
 mkdir -p $RELEASE_DIR/python_ins
@@ -93,7 +106,7 @@ pip install --no-index --find-links $RELEASE_DIR/python_deps $RELEASE_DIR/python
 #
 # build router
 cd $WORK_DIR/text-generation-inference/router
-OPENSSL_DIR=$SLURM_TMPDIR/tgl-env cargo build -j $MAX_JOBS --release
+OPENSSL_DIR=$TMP_PYENV cargo build -j $MAX_JOBS --release
 cp $WORK_DIR/text-generation-inference/target/release/text-generation-router $RELEASE_DIR/bin/
 
 # build launcher
@@ -103,7 +116,7 @@ cp $WORK_DIR/text-generation-inference/target/release/text-generation-launcher $
 
 # build benchmark
 cd $WORK_DIR/text-generation-inference/benchmark
-OPENSSL_DIR=$SLURM_TMPDIR/tgl-env cargo build -j $MAX_JOBS --release
+OPENSSL_DIR=$TMP_PYENV cargo build -j $MAX_JOBS --release
 cp $WORK_DIR/text-generation-inference/target/release/text-generation-benchmark $RELEASE_DIR/bin/
 
 #
