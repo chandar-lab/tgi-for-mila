@@ -50,7 +50,7 @@ export default_shard_usd_path=$SLURM_TMPDIR/tgl-server-socket
 export default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
 
 # start
- text-generation-launcher --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shards}" \
+ text-generation-launcher --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shard}" \
   --port "${PORT:-$default_port}" \
   --master-port "${MASTER_PORT:-$default_master_port}" \
   --shard-uds-path "${SHARD_UDS_PATH:-$default_shard_usd_path}"
