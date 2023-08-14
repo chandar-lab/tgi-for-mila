@@ -3,6 +3,13 @@
 Setups a runtime for https://github.com/huggingface/text-generation-inference, which can run nativly on
 Compute Canada and Mila clusters.
 
+**Current TGI version: 1.0.0, with [bnb, accelerate]**
+
+- [Compile release](#compile-release)
+- [Download model](#download-model)
+- [Start server](#start-server)
+- [Arguments:](#arguments)
+
 ## Compile release
 
 ### Mila
