@@ -6,7 +6,8 @@
 #SBATCH --time=1:00:00
 set -e
 
-echo "Downloading ${MODEL_ID}"
+TGI_VERSION='1.0.2'
+FLASH_ATTN_VERSION='2.0.8'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -19,19 +20,22 @@ if [ -z "${TMP_PYENV}" ]; then
     TMP_PYENV=$SLURM_TMPDIR/tgl-env
 fi
 
+echo "Downloading ${MODEL_ID}"
+
 # Load modules
 module load gcc/9.3.0
 
 # Create env
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $TMP_PYENV -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pytorch==2.0.1' 'pytorch-cuda=11.7' 'cudnn=8.8' 'openssl=3'
+micromamba create -y -p $TMP_PYENV -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
 micromamba activate $TMP_PYENV
 
 # install
 pip install --no-index --find-links $RELEASE_DIR/python_deps \
-  'accelerate<0.20.0,>=0.19.0' \
-  'einops<0.7.0,>=0.6.1' \
-  $RELEASE_DIR/python_ins/*.whl
+  $RELEASE_DIR/python_ins/flash_attn-*.whl $RELEASE_DIR/python_ins/vllm-*.whl \
+  $RELEASE_DIR/python_ins/rotary_emb-*.whl $RELEASE_DIR/python_ins/dropout_layer_norm-*.whl \
+  $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
+  "$RELEASE_DIR/python_ins/text_generation_server-1.0.1-py3-none-any.whl[bnb, accelerate, quantize]"
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
 

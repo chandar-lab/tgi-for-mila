@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=rrg-bengioy-ad
-#SBATCH -J compile-native
+#SBATCH -J tgi-compile
 #SBATCH --output=%x.%j.out
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
@@ -8,9 +8,9 @@
 set -e
 set -v
 
+TGI_VERSION='1.0.2'
+FLASH_ATTN_VERSION='2.0.8'
 export MAX_JOBS=10
-TGI_VERSION='1.0.0'
-WORK_DIR=$SLURM_TMPDIR/workspace
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -31,7 +31,7 @@ echo "Storing files in $(realpath $RELEASE_DIR)"
 mkdir -p $WORK_DIR
 
 # Load modules
-module load python/3.11 gcc/11.3.0 git-lfs/3.3.0 rust/1.65.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163
+module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 rust/1.70.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
 export CC=$(which gcc)
 export CXX=$(which g++)
 
@@ -58,53 +58,24 @@ git checkout tags/v${TGI_VERSION} -b v${TGI_VERSION}-branch
 ####
 # download
 cd $RELEASE_DIR/python_deps
-pip download --no-deps 'grpcio-tools==1.51.1' 'mypy-protobuf==3.4.0' 'types-protobuf>=3.20.4'
-pip download --no-deps 'poetry-core>=1.6.1' 'accelerate>=0.19.0,<0.20.0'
+pip download --no-deps 'mypy-protobuf==3.4.0' 'types-protobuf>=3.20.4'
 pip download --no-deps --index-url https://download.pytorch.org/whl/cu118 'torch==2.0.1'
-grep -ivE "pyarrow" $WORK_DIR/text-generation-inference/server/requirements.txt > $WORK_DIR/requirements.txt
+grep -ivE "scipy" $WORK_DIR/text-generation-inference/server/requirements.txt > $WORK_DIR/requirements.txt
 pip download --no-deps -r $WORK_DIR/requirements.txt
+pip download 'bitsandbytes<0.42.0,>=0.41.1' # bnb
+pip download 'datasets<3.0.0,>=2.14.0' 'texttable<2.0.0,>=1.6.7' # quantize
+pip download 'accelerate<0.21.0,>=0.20.0' # accelerate
+pip download --no-deps 'poetry-core>=1.6.1' # build dependencies
 
 # cleanup dependencies where another acceptable version is provided by compute canada
-rm *+computecanada*.whl
-rm -f numpy-1.25.0.tar.gz sentencepiece-0.1.99.tar.gz regex-2023.6.3.tar.gz \
-    pandas-2.0.3.tar.gz yarl-1.9.2.tar.gz frozenlist-1.4.0.tar.gz \
-    MarkupSafe-2.1.3.tar.gz aiohttp-3.8.5.tar.gz psutil-5.9.5.tar.gz
-
-# remove bitsandbytes, this require custom compiling
-rm bitsandbytes-0.38.1-py3-none-any.whl
-
-# build dependencies that are not pre-compiled
-pip wheel --no-index --no-deps --find-links $RELEASE_DIR/python_deps 'hf_transfer-0.1.3.tar.gz'
-rm hf_transfer-0.1.3.tar.gz
-
-tar xvf grpcio-tools-1.51.1.tar.gz
-cd grpcio-tools-1.51.1
-python -m build
-cp dist/grpcio_tools-1.51.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_deps/
-cd $RELEASE_DIR/python_deps
-rm -rf grpcio-tools-1.51.1 grpcio-tools-1.51.1.tar.gz
-
-tar xvf grpcio-1.56.0.tar.gz
-cd grpcio-1.56.0
-python -m build
-cp dist/grpcio-1.56.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_deps/
-cd $RELEASE_DIR/python_deps
-rm -rf grpcio-1.56.0 grpcio-1.56.0.tar.gz
-
-#
-# Build bitsandbytes
-#
-git clone https://github.com/TimDettmers/bitsandbytes.git $WORK_DIR/bitsandbytes
-cd $WORK_DIR/bitsandbytes
-git checkout tags/0.40.0 -b 0.40.0-branch
-CUDA_VERSION=118 make GPP=$(which g++) cuda11x
-python setup.py bdist_egg
-wheel convert dist/bitsandbytes-0.40.0.post4-py3.11.egg
-cp bitsandbytes-0.40.0.post4-py311-none-any.whl $RELEASE_DIR/python_ins/
+rm -f *+computecanada*.whl
+rm -f safetensors-* aiohttp-* frozenlist-* pandas-* pyarrow-* xxhash-* yarl-*
 
 ####
 # BUILD tgi
 ####
+pip install --no-index --find-links $RELEASE_DIR/python_deps "torch==2.0.1"
+pip install --no-index --find-links $RELEASE_DIR/python_deps packaging
 
 #
 # build server
@@ -118,13 +89,11 @@ python -m grpc_tools.protoc -I../proto --python_out=text_generation_server/pb \
 find text_generation_server/pb/ -type f -name "*.py" -print0 -exec sed -i -e 's/^\(import.*pb2\)/from . \1/g' {} \;
 touch text_generation_server/pb/__init__.py
 rm text_generation_server/pb/.gitignore
-# Install specific version of torch
-pip install --no-index --find-links $RELEASE_DIR/python_deps "torch==2.0.1"
 # build package
 pip install --no-index --find-links $RELEASE_DIR/python_deps -U 'poetry-core>=1.6.1'
-pip wheel --no-deps --no-index --find-links $RELEASE_DIR/python_deps ".[bnb, accelerate]"
-cp text_generation_server-${TGI_VERSION}-py3-none-any.whl $RELEASE_DIR/python_ins/
-pip install --no-index --find-links $RELEASE_DIR/python_deps $RELEASE_DIR/python_ins/text_generation_server-${TGI_VERSION}-py3-none-any.whl
+pip wheel --no-deps --no-index --find-links $RELEASE_DIR/python_deps ".[bnb, accelerate, quantize]"
+# cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_ins/
+cp text_generation_server-1.0.1-py3-none-any.whl $RELEASE_DIR/python_ins/
 
 #
 # build cli
@@ -148,40 +117,38 @@ cp $WORK_DIR/text-generation-inference/target/release/text-generation-benchmark 
 # build kernels
 #
 NV_CC="8.0;8.6" # flash-attention-v2 and exllama_kernels are anyway limited to CC of 8.0+
-pip install --no-index --find-links $RELEASE_DIR/python_deps packaging
 
 # flash-attention v2
+# NOTE: compute canada does include flash_attn in the wheelhouse. However, this is not compatiable
+# with the downloaded torch+cu118 version. Therefore it needs to be compiled.
+
 # For some reason the Dockerfile in TGI, compiles flash_attention, rotary, and layer_norm
 # from flash-attention v1. And then compiles flash_attention from flash-attention v2.
 # However, this is redudant as rotary and layer_norm are nearly the same and
 # flash-attention v1 is only used by TGI when flash-attention v2 does not exists.
 # Therefore do only compile flash-attention v2.
 cd $WORK_DIR/text-generation-inference/server
-git clone https://github.com/HazyResearch/flash-attention.git flash-attention-v2
+git clone https://github.com/Dao-AILab/flash-attention flash-attention-v2
 cd $WORK_DIR/text-generation-inference/server/flash-attention-v2
-git checkout tags/v2.0.1
+git checkout tags/v${FLASH_ATTN_VERSION}
 
-# For some reason, this build step fails unless MAX_JOBS is lowered.
-# It may be an hidden OOM issue. Apparently, it takes a lot to compile these files.
-# Some anendotal measure, MAX_JOBS=4 runs 4 nvcc programs, each may run two threads
-# CC=8.0 and CC=9.0 (for some reason), each thread can use up to 5.2 GB and ninja use 0.5GB
-# total = 42.1GB ram.
+# With 48GB of memory, MAX_JOBS=4 is as high as it goes.
 cd $WORK_DIR/text-generation-inference/server/flash-attention-v2
 TORCH_CUDA_ARCH_LIST=$NV_CC MAX_JOBS=4 python setup.py build
 TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
-wheel convert dist/flash_attn-2.0.1-py3.11-linux-x86_64.egg
-wheel tags --python-tag=cp311 flash_attn-2.0.1-py311-cp311-linux_x86_64.whl
-cp flash_attn-2.0.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+wheel convert dist/flash_attn-${FLASH_ATTN_VERSION}-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 flash_attn-${FLASH_ATTN_VERSION}-py311-cp311-linux_x86_64.whl
+cp flash_attn-${FLASH_ATTN_VERSION}-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 cd $WORK_DIR/text-generation-inference/server/flash-attention-v2/csrc/rotary
-TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py build
+TORCH_CUDA_ARCH_LIST=$NV_CC FLASH_ATTENTION_FORCE_BUILD=True python setup.py build
 TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
 wheel convert dist/rotary_emb-0.1-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 rotary_emb-0.1-py311-cp311-linux_x86_64.whl
 cp rotary_emb-0.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 cd $WORK_DIR/text-generation-inference/server/flash-attention-v2/csrc/layer_norm
-TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py build
+TORCH_CUDA_ARCH_LIST=$NV_CC FLASH_ATTENTION_FORCE_BUILD=True python setup.py build
 TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
 wheel convert dist/dropout_layer_norm-0.1-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 dropout_layer_norm-0.1-py311-cp311-linux_x86_64.whl
