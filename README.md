@@ -58,7 +58,7 @@ sbatch --export=ALL,HF_TOKEN=hf_abcdef,MODEL_ID=tiiuae/falcon-7b-instruct tgi-do
 
 ## Start server
 
-It is recommended to only run the server on a A100 GPU, or perhaps never, this is due to the ``Nvidia compute capability''. To start the server use:
+It is recommended to only run the server on a A100 GPU, or perhaps never, this is due to the "Nvidia compute capability". To start the server use:
 
 ```bash
 sbatch --export=ALL,MODEL_ID=tiiuae/falcon-7b-instruct tgi-server-{mila,cc}.sh
