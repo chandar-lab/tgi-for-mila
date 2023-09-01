@@ -7,7 +7,8 @@
 #SBATCH --time=1:00:00
 set -e
 
-echo "Downloading ${MODEL_ID}"
+TGI_VERSION='1.0.2'
+FLASH_ATTN_VERSION='2.0.8'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -20,8 +21,10 @@ if [ -z "${TMP_PYENV}" ]; then
     TMP_PYENV=$SLURM_TMPDIR/tgl-env
 fi
 
+echo "Downloading ${MODEL_ID}"
+
 # Load modules
-module load python/3.11 gcc/11.3.0 git-lfs/3.3.0 rust/1.65.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163
+module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 rust/1.70.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
 
 # create env
 virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
@@ -30,9 +33,11 @@ python -m pip install --no-index -U pip setuptools wheel build
 
 # install
 pip install --no-index --find-links $RELEASE_DIR/python_deps \
-  'accelerate<0.20.0,>=0.19.0' \
-  'einops<0.7.0,>=0.6.1' \
-  $RELEASE_DIR/python_ins/*.whl
+  $RELEASE_DIR/python_ins/flash_attn-*.whl $RELEASE_DIR/python_ins/vllm-*.whl \
+  $RELEASE_DIR/python_ins/rotary_emb-*.whl $RELEASE_DIR/python_ins/dropout_layer_norm-*.whl \
+  $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
+  "$RELEASE_DIR/python_ins/text_generation_server-1.0.1-py3-none-any.whl[bnb, accelerate, quantize]"
+
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 
 # prepear directories

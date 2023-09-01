@@ -3,18 +3,22 @@
 Setups a runtime for https://github.com/huggingface/text-generation-inference, which can run nativly on
 Compute Canada and Mila clusters.
 
-**Current TGI version: 1.0.0, with [bnb, accelerate]**
+
+* **TGI version:** 1.0.2
+* **enabled features:** [bnb, accelerate, quantize]
+* **Flash-attention version:** 2.0.8
 
 - [Compile release](#compile-release)
 - [Download model](#download-model)
 - [Start server](#start-server)
-- [Arguments:](#arguments)
+- [Arguments](#arguments)
+- [Differences from Docker image](#differences-from-docker-image)
 
 ## Compile release
 
 ### Mila
 
-From a login node run:
+From a login node install micromamba:
 
 ```bash
 cd ~/ && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
@@ -27,9 +31,6 @@ the `RELEASE_DIR`.
 ```bash
 sbatch tgi-compile-mila.sh
 ```
-
-Note, because Mila does not support CUDA 11.8+, this will not compile the ["custom-kernels"](https://github.com/huggingface/text-generation-inference/tree/main/server/custom_kernels). But you will still get the other optimized kernels
-flash-attention, etc.
 
 ### Compute Canada
 
@@ -109,19 +110,20 @@ ssh -N -f -L localhost:20001:cn-g017:10148 mila
 
 This is a list of configurations that are confirmed to work on the Mila cluster. Less resources may
 be possible. If you are using the server interactively, you may benifit from using
-`--partition=short-unkillable` which allow a 3 hour, 4 GPU job. The specific memory and compute
-utilization, will depend on the inputs. Those numbers are just for one large input. TGI will batch
-multiple inputs of similar lengths.
+`--partition=short-unkillable` which allow a 3 hour, 4 GPU job.
 
-| `MODEL_ID`                     | GPUs                    | Mila slurm flags                                                             | Comp. Util | Mem Util. |
-| ------------------------------ | ----------------------- | ---------------------------------------------------------------------------- | ---------- | --------- |
+The specific memory and compute utilization, will depend on the inputs. Those numbers are just for one
+large input. TGI will batch multiple inputs of similar lengths.
+
+| `MODEL_ID`                     | GPUs                    | Mila slurm flags                                                                   | Comp. Util | Mem Util. |
+| ------------------------------ | ----------------------- | ---------------------------------------------------------------------------------- | ---------- | --------- |
 | meta-llama/Llama-2-70b-chat-hf | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=a100l:2 --mem=128G --constraint=ampere&nvlink` | 97%        | 82%       |
 | meta-llama/Llama-2-13b-chat-hf | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=a100l:1 --mem=128G --constraint=ampere`        | 96%        | 73%       |
-| meta-llama/Llama-2-7b-chat-hf  | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=a100l.3:1 --mem=24G --constraint=ampere`  |            |           |
+| meta-llama/Llama-2-7b-chat-hf  | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=a100l.3:1 --mem=24G --constraint=ampere`        |            |           |
 | tiiuae/falcon-40b-instruct     | 2x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=a100l:2 --mem=128G --constraint=ampere&nvlink` | 96 %       | 76 %      |
-| tiiuae/falcon-7b-instruct      | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=a100l.3:1 --mem=24G --constraint=ampere`  |            |           |
+| tiiuae/falcon-7b-instruct      | 3/7 A100 (80GB) (=40GB) | `--cpus-per-task=4 --gpus-per-task=a100l.3:1 --mem=24G --constraint=ampere`        |            |           |
 | google/flan-t5-xxl             | 1x A100 (80GB)          | `--cpus-per-task=24 --gpus-per-task=a100l:1 --mem=128G --constraint=ampere`        |            |           |
-| bigscience/bloomz              |                         |                                                                              |            |           |
+| bigscience/bloomz              |                         |                                                                                    |            |           |
 
 ### Multiple instances on the same job
 
@@ -153,7 +155,7 @@ MODEL_ID=tiiuae/falcon-40b-instruct TMP_PYENV=$SLURM_TMPDIR/tgl-env-01 SHARD_UDS
 MODEL_ID=meta-llama/Llama-2-70b-chat-hf TMP_PYENV=$SLURM_TMPDIR/tgl-env-23 SHARD_UDS_PATH=$SLURM_TMPDIR/tgl-server-socket-23 PORT=$(expr 30000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 40000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=2,3 NUM_SHARD=2 bash tgi-server-mila.sh &
 ```
 
-## Arguments:
+## Arguments
 
 ### Required
 
@@ -207,12 +209,12 @@ The number of shards to use if you don't want to use all GPUs on a given machine
 **`QUANTIZE`**
 Whether you want the model to be quantized. This will use `bitsandbytes` for quantization on the fly, or `gptq`
 
-[possible values: bitsandbytes, gptq]
+Possible values: bitsandbytes, gptq
 
 **`DTYPE`**
 The dtype to be forced upon the model. This option cannot be used with `--quantize`
 
-[possible values: float16, bfloat16]
+Possible values: float16, bfloat16
 
 **`MAX_BEST_OF`**
 This is the maximum allowed value for clients to set `best_of`. Best of makes `n` generations at the same time,
@@ -235,17 +237,40 @@ This is the most important value to set as it defines the "memory budget" of run
   max_new_tokens. The larger this value, the larger amount each request will be in your RAM and the less
   effective batching can be
 
+**`TRUST_REMOTE_CODE`**
+
+Whether you want to execute hub modelling code. Explicitly passing a `revision` is encouraged when loading
+a model with custom code to ensure no malicious code has been contributed in a newer revision.
+
 **`PORT`**
 The port to listen on
 
-[default: `$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))`]
+Default: `$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))`
 
 **`SHARD_UDS_PATH`**
 The name of the socket for gRPC communication between the webserver and the shards
 
-[default: `$SLURM_TMPDIR/tgl-server-socket`]
+Default: `$SLURM_TMPDIR/tgl-server-socket`
 
 **`MASTER_PORT`**
 The address the master port will listen on. (setting used by torch distributed)
 
-[default: `$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))`]
+Default: `$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))`
+
+
+## Differences from Docker image
+
+https://github.com/huggingface/text-generation-inference offers a docker image of TGI.
+Best efforts are made to keep this variant of TGI as close to the docker image. However, some
+changes have been made:
+
+1. TGI Docker image uses flash-attention v2.0.0 (4f285b354796fb17df8636485b9a04df3ebbb7dc) with a
+  fallback to flash-attention v1.0.9 (3a9bfd076f98746c73362328958dbc68d145fbec). Meaning both versions
+  exists in the docker image. As far as I can tell this fallback serves no purpose, and is only used of
+  flash-attention v2 is not installed.
+  Therefore, flash-attention v1 is not included in this release, as it takes a really long time to
+  compile two versions of flash-attention can only exist with some hacks, that I don't think are wise
+  to use.
+1. Due to some compile challenges, a newer version of flash-attention is used instead of v2.0.0.
+2. The version of some dependency packages, such as numpy, may have slighly different versions on
+  Compute Canada. This is because Compute Canada does not provide those exact versions in their wheelhouse.
