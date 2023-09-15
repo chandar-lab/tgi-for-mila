@@ -40,7 +40,9 @@ pip install --no-index --find-links $RELEASE_DIR/python_deps \
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 
 # configure
-export HUGGINGFACE_OFFLINE=1
+export HF_HUB_OFFLINE=1
+export HF_DATASETS_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 export HF_HUB_DISABLE_TELEMETRY=1
 export HF_HUB_ENABLE_HF_TRANSFER=1
 export HUGGINGFACE_HUB_CACHE=$TGI_DIR/tgi-data
