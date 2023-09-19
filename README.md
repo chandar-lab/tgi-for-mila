@@ -266,11 +266,10 @@ changes have been made:
 
 1. TGI Docker image uses flash-attention v2.0.0 (4f285b354796fb17df8636485b9a04df3ebbb7dc) with a
   fallback to flash-attention v1.0.9 (3a9bfd076f98746c73362328958dbc68d145fbec). Meaning both versions
-  exists in the docker image. As far as I can tell this fallback serves no purpose, and is only used of
-  flash-attention v2 is not installed.
-  Therefore, flash-attention v1 is not included in this release, as it takes a really long time to
-  compile two versions of flash-attention can only exist with some hacks, that I don't think are wise
-  to use.
+  exists in the docker image. As far as I can tell this fallback serves no purpose, and is only used if
+  flash-attention v2 is not installed. Because it takes a really long time to
+  compile flash-attention and two versions of flash-attention can only exist with some hacks,
+  flash-attention v1 is not included in this release. 
 1. Due to some compile challenges, a newer version of flash-attention is used instead of v2.0.0.
 2. The version of some dependency packages, such as numpy, may have slighly different versions on
   Compute Canada. This is because Compute Canada does not provide those exact versions in their wheelhouse.
