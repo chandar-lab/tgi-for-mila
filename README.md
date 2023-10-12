@@ -4,9 +4,9 @@ Setups a runtime for https://github.com/huggingface/text-generation-inference, w
 Compute Canada and Mila clusters.
 
 
-* **TGI version:** 1.0.2
+* **TGI version:** 1.1.0
 * **enabled features:** [bnb, accelerate, quantize]
-* **Flash-attention version:** 2.0.8
+* **Flash-attention version:** 2.3.2
 
 - [Compile release](#compile-release)
 - [Download model](#download-model)
@@ -43,6 +43,16 @@ sbatch tgi-compile-cc.sh
 
 Note that Cedar does not permit the log files to be stored on $HOME. So start the script from either
 ~/scratch or ~/projects.
+
+Note, when using Globus to copy the compiled files, file permissions may not be transfered.
+For example, "Failed to start webserver: Permission denied (os error 13)" can be caused by missing file
+permissions. To set permissions, run:
+
+```bash
+chmod +x ~/tgi-release/bin/text-generation-benchmark
+chmod +x ~/tgi-release/bin/text-generation-launcher
+chmod +x ~/tgi-release/bin/text-generation-router
+```
 
 ## Download model
 
@@ -264,12 +274,10 @@ https://github.com/huggingface/text-generation-inference offers a docker image o
 Best efforts are made to keep this variant of TGI as close to the docker image. However, some
 changes have been made:
 
-1. TGI Docker image uses flash-attention v2.0.0 (4f285b354796fb17df8636485b9a04df3ebbb7dc) with a
-  fallback to flash-attention v1.0.9 (3a9bfd076f98746c73362328958dbc68d145fbec). Meaning both versions
-  exists in the docker image. As far as I can tell this fallback serves no purpose, and is only used if
-  flash-attention v2 is not installed. Because it takes a really long time to
-  compile flash-attention and two versions of flash-attention can only exist with some hacks,
-  flash-attention v1 is not included in this release. 
-1. Due to some compile challenges, a newer version of flash-attention is used instead of v2.0.0.
+1. TGI Docker image uses flash-attention v2.3.0 with a fallback to flash-attention v1.0.9. Meaning both versions
+  exists in the docker image. The older flash-attention exists to support older GPUs, however these are not used
+  on Mila or Compute Canada, therefore they are not included. Also, it takes a really long time to
+  compile flash-attention and two versions of flash-attention can only exist with some hacks.
+1. To include the latest fixes to flash-attention, v2.3.2 is used instead of v2.3.0.
 2. The version of some dependency packages, such as numpy, may have slighly different versions on
   Compute Canada. This is because Compute Canada does not provide those exact versions in their wheelhouse.

@@ -8,8 +8,8 @@
 set -e
 set -v
 
-TGI_VERSION='1.0.2'
-FLASH_ATTN_VERSION='2.0.8'
+TGI_VERSION='1.1.0'
+FLASH_ATTN_VERSION='2.3.2'
 export MAX_JOBS=4
 
 # Default config
@@ -100,8 +100,7 @@ rm text_generation_server/pb/.gitignore
 # build package
 pip install --no-index --find-links $RELEASE_DIR/python_deps 'poetry-core>=1.6.1'
 pip wheel --no-deps --no-index --find-links $RELEASE_DIR/python_deps ".[bnb, accelerate, quantize]"
-# cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_ins/
-cp text_generation_server-1.0.1-py3-none-any.whl $RELEASE_DIR/python_ins/
+cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_ins/
 
 #
 # build cli
@@ -164,12 +163,30 @@ cp dropout_layer_norm-0.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # vllm
 cd $WORK_DIR/text-generation-inference/server
-make build-vllm
+TORCH_CUDA_ARCH_LIST=$NV_CC make build-vllm
 cd $WORK_DIR/text-generation-inference/server/vllm
 python setup.py bdist_egg
 wheel convert dist/vllm-0.0.0-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 vllm-0.0.0-py311-cp311-linux_x86_64.whl
 cp vllm-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+# awq
+cd $WORK_DIR/text-generation-inference/server
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX make build-awq
+cd $WORK_DIR/text-generation-inference/server/llm-awq/awq/kernels
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX python setup.py bdist_egg
+wheel convert dist/awq_inference_engine-0.0.0-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 awq_inference_engine-0.0.0-py311-cp311-linux_x86_64.whl
+cp awq_inference_engine-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+# eetq
+cd $WORK_DIR/text-generation-inference/server
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX make build-eetq
+cd $WORK_DIR/text-generation-inference/server/eetq
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX python setup.py bdist_egg
+wheel convert dist/EETQ-1.0.0b0-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 EETQ-1.0.0b0-py311-cp311-linux_x86_64.whl
+cp EETQ-1.0.0b0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # exllama_kernels
 cd $WORK_DIR/text-generation-inference/server/exllama_kernels
@@ -186,3 +203,7 @@ TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
 wheel convert dist/custom_kernels-0.0.0-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 custom_kernels-0.0.0-py311-cp311-linux_x86_64.whl
 cp custom_kernels-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+echo "***************************"
+echo "* COMPILE JOB SUCCESSFULL *"
+echo "***************************"

@@ -6,8 +6,8 @@
 #SBATCH --time=1:00:00
 set -e
 
-TGI_VERSION='1.0.2'
-FLASH_ATTN_VERSION='2.0.8'
+TGI_VERSION='1.1.0'
+FLASH_ATTN_VERSION='2.3.2'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -34,8 +34,9 @@ micromamba activate $TMP_PYENV
 pip install --no-index --find-links $RELEASE_DIR/python_deps \
   $RELEASE_DIR/python_ins/flash_attn-*.whl $RELEASE_DIR/python_ins/vllm-*.whl \
   $RELEASE_DIR/python_ins/rotary_emb-*.whl $RELEASE_DIR/python_ins/dropout_layer_norm-*.whl \
+  $RELEASE_DIR/python_ins/awq_inference_engine-*.whl $RELEASE_DIR/python_ins/EETQ-*.whl \
   $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
-  "$RELEASE_DIR/python_ins/text_generation_server-1.0.1-py3-none-any.whl[bnb, accelerate, quantize]"
+  "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize]"
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
 
@@ -79,3 +80,7 @@ set -e
 
 # convert .bin to .safetensors if needed
 text-generation-server download-weights "${TGI_DIR}/tgi-repos/${MODEL_ID}"
+
+echo "****************************"
+echo "* DOWNLOAD JOB SUCCESSFULL *"
+echo "****************************"
