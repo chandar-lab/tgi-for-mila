@@ -49,14 +49,15 @@ export HF_HUB_DISABLE_TELEMETRY=1
 export HF_HUB_ENABLE_HF_TRANSFER=1
 export HUGGINGFACE_HUB_CACHE=$TGI_DIR/tgi-data
 
-export default_num_shard=$(python -c 'import torch; print(torch.cuda.device_count())')
-export default_port=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
-export default_master_port=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))
-export default_shard_usd_path=$SLURM_TMPDIR/tgl-server-socket
-export default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
+default_num_shard=$(python -c 'import torch; print(torch.cuda.device_count())')
+default_port=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
+default_master_port=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))
+default_shard_usd_path=$SLURM_TMPDIR/tgl-server-socket
+default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
 
 # start
-text-generation-launcher --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shard}" \
+text-generation-launcher \
+  --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shard}" \
   --port "${PORT:-$default_port}" \
   --master-port "${MASTER_PORT:-$default_master_port}" \
   --shard-uds-path "${SHARD_UDS_PATH:-$default_shard_usd_path}"
