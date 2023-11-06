@@ -19,16 +19,16 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 
 # Load modules
 module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
 
 # create env
-virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
-source $TMP_PYENV/bin/activate
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TGI_TMP/pyenv
+source $TGI_TMP/pyenv/bin/activate
 python -m pip install --no-index -U pip setuptools wheel build
 
 # install
@@ -51,12 +51,15 @@ export HUGGINGFACE_HUB_CACHE=$TGI_DIR/tgi-data
 default_num_shard=$(python -c 'import torch; print(torch.cuda.device_count())')
 default_port=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
 default_master_port=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))
-default_shard_usd_path=$SLURM_TMPDIR/tgl-server-socket
+default_shard_usd_path=$TGI_TMP/socket
 default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
+
+# Copy model to tempdir. This will make restarts faster.
+rsync --archive --exclude='.git/' --update --delete --verbose --human-readable --whole-file --inplace --no-compress --progress ${MODEL_PATH:-$default_model_path}/ $TGI_TMP/model
 
 # start
 text-generation-launcher \
-  --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shard}" \
+  --model-id $TGI_TMP/model --num-shard "${NUM_SHARD:-$default_num_shard}" \
   --port "${PORT:-$default_port}" \
   --master-port "${MASTER_PORT:-$default_master_port}" \
   --shard-uds-path "${SHARD_UDS_PATH:-$default_shard_usd_path}"

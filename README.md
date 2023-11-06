@@ -160,9 +160,9 @@ echo "MODEL: meta-llama/Llama-2-70b-chat-hf"
 echo "PROXY: ssh -N -f -L localhost:20002:$SLURMD_NODENAME:$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) mila"
 echo ""
 
-MODEL_ID=tiiuae/falcon-40b-instruct TMP_PYENV=$SLURM_TMPDIR/tgl-env-01 SHARD_UDS_PATH=$SLURM_TMPDIR/tgl-server-socket-01 PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=0,1 NUM_SHARD=2 bash tgi-server-mila.sh &
+MODEL_ID=tiiuae/falcon-40b-instruct TGI_TMP=$SLURM_TMPDIR/tgi-01 PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=0,1 NUM_SHARD=2 bash tgi-server-mila.sh &
 
-MODEL_ID=meta-llama/Llama-2-70b-chat-hf TMP_PYENV=$SLURM_TMPDIR/tgl-env-23 SHARD_UDS_PATH=$SLURM_TMPDIR/tgl-server-socket-23 PORT=$(expr 30000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 40000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=2,3 NUM_SHARD=2 bash tgi-server-mila.sh &
+MODEL_ID=meta-llama/Llama-2-70b-chat-hf TGI_TMP=$SLURM_TMPDIR/tgi-23 PORT=$(expr 30000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 40000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=2,3 NUM_SHARD=2 bash tgi-server-mila.sh &
 ```
 
 ## Arguments
@@ -199,10 +199,10 @@ Points to the directory where model weights and configurations are saved. Needs 
 
 Default: `$SCRATCH/tgi`.
 
-**`TMP_PYENV`**
+**`TGI_TMP`**
 The directory where the temporary python enviorment will be created.
 
-Default: `$SLURM_TMPDIR/tgl-env`.
+Default: `$SLURM_TMPDIR/tgi`.
 
 **`WORK_DIR`** (compile script only)
 The directory where the temporary source files will be stored.
@@ -260,7 +260,7 @@ Default: `$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))`
 **`SHARD_UDS_PATH`**
 The name of the socket for gRPC communication between the webserver and the shards
 
-Default: `$SLURM_TMPDIR/tgl-server-socket`
+Default: `$TGI_TMP/socket`
 
 **`MASTER_PORT`**
 The address the master port will listen on. (setting used by torch distributed)
