@@ -60,9 +60,9 @@ mkdir -p $RELEASE_DIR/python_ins
 mkdir -p $RELEASE_DIR/bin
 
 # download source
-git clone https://github.com/huggingface/text-generation-inference.git $WORK_DIR/text-generation-inference
+git clone https://github.com/AndreasMadsen/text-generation-inference.git $WORK_DIR/text-generation-inference
 cd $WORK_DIR/text-generation-inference
-git checkout tags/v${TGI_VERSION} -b v${TGI_VERSION}-branch
+git checkout origin/v11-new-max -b v${TGI_VERSION}-branch
 
 ####
 # download and compile python dependencies
