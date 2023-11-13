@@ -16,8 +16,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 
 echo "Downloading ${MODEL_ID}"
@@ -27,8 +27,8 @@ module load gcc/9.3.0
 
 # Create env
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $TMP_PYENV -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
-micromamba activate $TMP_PYENV
+micromamba create -y -p $TGI_TMP/pyenv -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
+micromamba activate $TGI_TMP/pyenv
 
 # install
 pip install --no-index --find-links $RELEASE_DIR/python_deps \
@@ -38,7 +38,7 @@ pip install --no-index --find-links $RELEASE_DIR/python_deps \
   $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
   "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize]"
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
-export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$TGI_TMP/pyenv/lib:$LD_LIBRARY_PATH
 
 # prepear directories
 mkdir -p $TGI_DIR/tgi-data

@@ -19,8 +19,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 if [ -z "${WORK_DIR}" ]; then
     WORK_DIR=$SLURM_TMPDIR/workspace
@@ -35,11 +35,11 @@ module load gcc/9.3.0
 
 # Create environment
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $TMP_PYENV -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cuda-nvcc=11.8' 'cudatoolkit=11.8' 'cuda-libraries=11.8' 'cuda-libraries-dev=11.8' 'cudnn=8.8' 'openssl=3' 'ninja=1'
-micromamba activate $TMP_PYENV
-export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
-export CPATH=$TMP_PYENV/include:$CPATH
-export LIBRARY_PATH=$TMP_PYENV/lib:$LIBRARY_PATH
+micromamba create -y -p $TGI_TMP/pyenv -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cuda-nvcc=11.8' 'cudatoolkit=11.8' 'cuda-libraries=11.8' 'cuda-libraries-dev=11.8' 'cudnn=8.8' 'openssl=3' 'ninja=1'
+micromamba activate $TGI_TMP/pyenv
+export LD_LIBRARY_PATH=$TGI_TMP/pyenv/lib:$LD_LIBRARY_PATH
+export CPATH=$TGI_TMP/pyenv/include:$CPATH
+export LIBRARY_PATH=$TGI_TMP/pyenv/lib:$LIBRARY_PATH
 export CC=$(which gcc)
 export CXX=$(which g++)
 
@@ -107,7 +107,7 @@ cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_
 #
 # build router
 cd $WORK_DIR/text-generation-inference/router
-OPENSSL_DIR=$TMP_PYENV cargo build -j $MAX_JOBS --release
+OPENSSL_DIR=$TGI_TMP/pyenv cargo build -j $MAX_JOBS --release
 cp $WORK_DIR/text-generation-inference/target/release/text-generation-router $RELEASE_DIR/bin/
 
 # build launcher
@@ -117,7 +117,7 @@ cp $WORK_DIR/text-generation-inference/target/release/text-generation-launcher $
 
 # build benchmark
 cd $WORK_DIR/text-generation-inference/benchmark
-OPENSSL_DIR=$TMP_PYENV cargo build -j $MAX_JOBS --release
+OPENSSL_DIR=$TGI_TMP/pyenv cargo build -j $MAX_JOBS --release
 cp $WORK_DIR/text-generation-inference/target/release/text-generation-benchmark $RELEASE_DIR/bin/
 
 #

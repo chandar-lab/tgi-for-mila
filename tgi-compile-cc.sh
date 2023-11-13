@@ -19,8 +19,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 if [ -z "${WORK_DIR}" ]; then
     WORK_DIR=$SLURM_TMPDIR/workspace
@@ -36,9 +36,9 @@ export CC=$(which gcc)
 export CXX=$(which g++)
 
 # Create environment
-virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TGI_TMP/pyenv
 set +v
-source $TMP_PYENV/bin/activate
+source $TGI_TMP/pyenv/bin/activate
 set -v
 python -m pip install --no-index -U pip setuptools wheel build
 

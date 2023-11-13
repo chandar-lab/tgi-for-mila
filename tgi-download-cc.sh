@@ -17,8 +17,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 
 echo "Downloading ${MODEL_ID}"
@@ -27,8 +27,8 @@ echo "Downloading ${MODEL_ID}"
 module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
 
 # create env
-virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
-source $TMP_PYENV/bin/activate
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TGI_TMP/pyenv
+source $TGI_TMP/pyenv/bin/activate
 python -m pip install --no-index -U pip setuptools wheel build
 
 # install
