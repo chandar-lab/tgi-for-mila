@@ -9,6 +9,11 @@ Update to TGI version 1.1.0. This update includes upgrading
 flash-attention to version 2.3.2, as well as adding the
 EETQ and awq kernels.
 
+In addition, model files are now rsync-copied to the local
+filesystem before the TGI server is started. This makes the
+TGI startup time faster, and subsequent restarts are
+much faster. This change replaces `TMP_PYENV` with `TGI_TMP`.
+
 * **TGI version:** 1.1.0
 * **enabled features:** [bnb, accelerate, quantize]
 * **Flash-attention version:** 2.3.2
