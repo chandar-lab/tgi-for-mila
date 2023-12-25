@@ -4,9 +4,9 @@ Setups a runtime for https://github.com/huggingface/text-generation-inference, w
 Compute Canada and Mila clusters.
 
 
-* **TGI version:** 1.0.2
+* **TGI version:** 1.1.0
 * **enabled features:** [bnb, accelerate, quantize]
-* **Flash-attention version:** 2.0.8
+* **Flash-attention version:** 2.3.2
 
 - [Compile release](#compile-release)
 - [Download model](#download-model)
@@ -43,6 +43,16 @@ sbatch tgi-compile-cc.sh
 
 Note that Cedar does not permit the log files to be stored on $HOME. So start the script from either
 ~/scratch or ~/projects.
+
+Note, when using Globus to copy the compiled files, file permissions may not be transfered.
+For example, "Failed to start webserver: Permission denied (os error 13)" can be caused by missing file
+permissions. To set permissions, run:
+
+```bash
+chmod +x ~/tgi-release/bin/text-generation-benchmark
+chmod +x ~/tgi-release/bin/text-generation-launcher
+chmod +x ~/tgi-release/bin/text-generation-router
+```
 
 ## Download model
 
@@ -150,9 +160,9 @@ echo "MODEL: meta-llama/Llama-2-70b-chat-hf"
 echo "PROXY: ssh -N -f -L localhost:20002:$SLURMD_NODENAME:$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) mila"
 echo ""
 
-MODEL_ID=tiiuae/falcon-40b-instruct TMP_PYENV=$SLURM_TMPDIR/tgl-env-01 SHARD_UDS_PATH=$SLURM_TMPDIR/tgl-server-socket-01 PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=0,1 NUM_SHARD=2 bash tgi-server-mila.sh &
+MODEL_ID=tiiuae/falcon-40b-instruct TGI_TMP=$SLURM_TMPDIR/tgi-01 PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=0,1 NUM_SHARD=2 bash tgi-server-mila.sh &
 
-MODEL_ID=meta-llama/Llama-2-70b-chat-hf TMP_PYENV=$SLURM_TMPDIR/tgl-env-23 SHARD_UDS_PATH=$SLURM_TMPDIR/tgl-server-socket-23 PORT=$(expr 30000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 40000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=2,3 NUM_SHARD=2 bash tgi-server-mila.sh &
+MODEL_ID=meta-llama/Llama-2-70b-chat-hf TGI_TMP=$SLURM_TMPDIR/tgi-23 PORT=$(expr 30000 + $(echo -n $SLURM_JOBID | tail -c 4)) MASTER_PORT=$(expr 40000 + $(echo -n $SLURM_JOBID | tail -c 4)) CUDA_VISIBLE_DEVICES=2,3 NUM_SHARD=2 bash tgi-server-mila.sh &
 ```
 
 ## Arguments
@@ -189,10 +199,10 @@ Points to the directory where model weights and configurations are saved. Needs 
 
 Default: `$SCRATCH/tgi`.
 
-**`TMP_PYENV`**
+**`TGI_TMP`**
 The directory where the temporary python enviorment will be created.
 
-Default: `$SLURM_TMPDIR/tgl-env`.
+Default: `$SLURM_TMPDIR/tgi`.
 
 **`WORK_DIR`** (compile script only)
 The directory where the temporary source files will be stored.
@@ -250,7 +260,7 @@ Default: `$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))`
 **`SHARD_UDS_PATH`**
 The name of the socket for gRPC communication between the webserver and the shards
 
-Default: `$SLURM_TMPDIR/tgl-server-socket`
+Default: `$TGI_TMP/socket`
 
 **`MASTER_PORT`**
 The address the master port will listen on. (setting used by torch distributed)
@@ -264,12 +274,10 @@ https://github.com/huggingface/text-generation-inference offers a docker image o
 Best efforts are made to keep this variant of TGI as close to the docker image. However, some
 changes have been made:
 
-1. TGI Docker image uses flash-attention v2.0.0 (4f285b354796fb17df8636485b9a04df3ebbb7dc) with a
-  fallback to flash-attention v1.0.9 (3a9bfd076f98746c73362328958dbc68d145fbec). Meaning both versions
-  exists in the docker image. As far as I can tell this fallback serves no purpose, and is only used if
-  flash-attention v2 is not installed. Because it takes a really long time to
-  compile flash-attention and two versions of flash-attention can only exist with some hacks,
-  flash-attention v1 is not included in this release. 
-1. Due to some compile challenges, a newer version of flash-attention is used instead of v2.0.0.
+1. TGI Docker image uses flash-attention v2.3.0 with a fallback to flash-attention v1.0.9. Meaning both versions
+  exists in the docker image. The older flash-attention exists to support older GPUs, however these are not used
+  on Mila or Compute Canada, therefore they are not included. Also, it takes a really long time to
+  compile flash-attention and two versions of flash-attention can only exist with some hacks.
+1. To include the latest fixes to flash-attention, v2.3.2 is used instead of v2.3.0.
 2. The version of some dependency packages, such as numpy, may have slighly different versions on
   Compute Canada. This is because Compute Canada does not provide those exact versions in their wheelhouse.

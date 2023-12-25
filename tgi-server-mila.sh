@@ -9,8 +9,8 @@
 #SBATCH --time=2:59:00
 set -e
 
-TGI_VERSION='1.0.2'
-FLASH_ATTN_VERSION='2.0.8'
+TGI_VERSION='1.1.0'
+FLASH_ATTN_VERSION='2.3.2'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -19,8 +19,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 
 # Load modules
@@ -28,17 +28,18 @@ module load gcc/9.3.0
 
 # Create enviorment
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $TMP_PYENV -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
-micromamba activate $TMP_PYENV
+micromamba create -y -p $TGI_TMP/pyenv -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
+micromamba activate $TGI_TMP/pyenv
 
 # install
 pip install --no-index --find-links $RELEASE_DIR/python_deps \
   $RELEASE_DIR/python_ins/flash_attn-*whl $RELEASE_DIR/python_ins/vllm-*.whl \
   $RELEASE_DIR/python_ins/rotary_emb-*.whl $RELEASE_DIR/python_ins/dropout_layer_norm-*.whl \
+  $RELEASE_DIR/python_ins/awq_inference_engine-*.whl $RELEASE_DIR/python_ins/EETQ-*.whl \
   $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
-  "$RELEASE_DIR/python_ins/text_generation_server-1.0.1-py3-none-any.whl[bnb, accelerate, quantize]"
+  "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize]"
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
-export LD_LIBRARY_PATH=$TMP_PYENV/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$TGI_TMP/pyenv/lib:$LD_LIBRARY_PATH
 
 # configure
 export HF_HUB_OFFLINE=1
@@ -48,14 +49,18 @@ export HF_HUB_DISABLE_TELEMETRY=1
 export HF_HUB_ENABLE_HF_TRANSFER=1
 export HUGGINGFACE_HUB_CACHE=$TGI_DIR/tgi-data
 
-export default_num_shard=$(python -c 'import torch; print(torch.cuda.device_count())')
-export default_port=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
-export default_master_port=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))
-export default_shard_usd_path=$SLURM_TMPDIR/tgl-server-socket
-export default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
+default_num_shard=$(python -c 'import torch; print(torch.cuda.device_count())')
+default_port=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
+default_master_port=$(expr 20000 + $(echo -n $SLURM_JOBID | tail -c 4))
+default_shard_usd_path=$TGI_TMP/socket
+default_model_path=$TGI_DIR/tgi-repos/$MODEL_ID
+
+# Copy model to tempdir. This will make restarts faster.
+rsync --archive --exclude='.git/' --update --delete --verbose --human-readable --whole-file --inplace --no-compress --progress ${MODEL_PATH:-$default_model_path}/ $TGI_TMP/model
 
 # start
-text-generation-launcher --model-id "${MODEL_PATH:-$default_model_path}" --num-shard "${NUM_SHARD:-$default_num_shard}" \
+text-generation-launcher \
+  --model-id $TGI_TMP/model --num-shard "${NUM_SHARD:-$default_num_shard}" \
   --port "${PORT:-$default_port}" \
   --master-port "${MASTER_PORT:-$default_master_port}" \
   --shard-uds-path "${SHARD_UDS_PATH:-$default_shard_usd_path}"

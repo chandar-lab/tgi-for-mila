@@ -8,8 +8,8 @@
 set -e
 set -v
 
-TGI_VERSION='1.0.2'
-FLASH_ATTN_VERSION='2.0.8'
+TGI_VERSION='1.1.0'
+FLASH_ATTN_VERSION='2.3.2'
 export MAX_JOBS=10
 
 # Default config
@@ -19,8 +19,8 @@ fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
 fi
-if [ -z "${TMP_PYENV}" ]; then
-    TMP_PYENV=$SLURM_TMPDIR/tgl-env
+if [ -z "${TGI_TMP}" ]; then
+    TGI_TMP=$SLURM_TMPDIR/tgi
 fi
 if [ -z "${WORK_DIR}" ]; then
     WORK_DIR=$SLURM_TMPDIR/workspace
@@ -31,14 +31,14 @@ echo "Storing files in $(realpath $RELEASE_DIR)"
 mkdir -p $WORK_DIR
 
 # Load modules
-module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 rust/1.70.0 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
+module load python/3.11 gcc/9.3.0 git-lfs/3.3.0 rust/1.70.0 cmake/3.23.1 openblas/0.3.17 protobuf/3.21.3 cuda/11.8.0 cudnn/8.6.0.163 arrow/12.0.1
 export CC=$(which gcc)
 export CXX=$(which g++)
 
 # Create environment
-virtualenv --app-data $SCRATCH/virtualenv --no-download $TMP_PYENV
+virtualenv --app-data $SCRATCH/virtualenv --no-download $TGI_TMP/pyenv
 set +v
-source $TMP_PYENV/bin/activate
+source $TGI_TMP/pyenv/bin/activate
 set -v
 python -m pip install --no-index -U pip setuptools wheel build
 
@@ -60,7 +60,7 @@ git checkout tags/v${TGI_VERSION} -b v${TGI_VERSION}-branch
 cd $RELEASE_DIR/python_deps
 pip download --no-deps 'mypy-protobuf==3.4.0' 'types-protobuf>=3.20.4'
 pip download --no-deps --index-url https://download.pytorch.org/whl/cu118 'torch==2.0.1'
-grep -ivE "scipy" $WORK_DIR/text-generation-inference/server/requirements.txt > $WORK_DIR/requirements.txt
+grep -ivE "pyarrow" $WORK_DIR/text-generation-inference/server/requirements.txt > $WORK_DIR/requirements.txt
 pip download --no-deps -r $WORK_DIR/requirements.txt
 pip download 'bitsandbytes<0.42.0,>=0.41.1' # bnb
 pip download 'datasets<3.0.0,>=2.14.0' 'texttable<2.0.0,>=1.6.7' # quantize
@@ -69,7 +69,15 @@ pip download --no-deps 'poetry-core>=1.6.1' # build dependencies
 
 # cleanup dependencies where another acceptable version is provided by compute canada
 rm -f *+computecanada*.whl
-rm -f safetensors-* aiohttp-* frozenlist-* pandas-* pyarrow-* xxhash-* yarl-*
+rm -f safetensors-* aiohttp-* frozenlist-* numpy-* scipy-* pandas-* pyarrow-* xxhash-* yarl-* Pillow-*
+
+# Compile grpcio
+tar xvf grpcio-1.58.0.tar.gz
+cd grpcio-1.58.0
+python -m build
+cp dist/grpcio-1.58.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_deps/
+cd $RELEASE_DIR/python_deps
+rm -rf grpcio-1.58.0 grpcio-1.58.0.tar.gz
 
 ####
 # BUILD tgi
@@ -92,8 +100,7 @@ rm text_generation_server/pb/.gitignore
 # build package
 pip install --no-index --find-links $RELEASE_DIR/python_deps -U 'poetry-core>=1.6.1'
 pip wheel --no-deps --no-index --find-links $RELEASE_DIR/python_deps ".[bnb, accelerate, quantize]"
-# cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_ins/
-cp text_generation_server-1.0.1-py3-none-any.whl $RELEASE_DIR/python_ins/
+cp "text_generation_server-${TGI_VERSION}-py3-none-any.whl" $RELEASE_DIR/python_ins/
 
 #
 # build cli
@@ -156,12 +163,30 @@ cp dropout_layer_norm-0.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # vllm
 cd $WORK_DIR/text-generation-inference/server
-make build-vllm
+TORCH_CUDA_ARCH_LIST=$NV_CC make build-vllm
 cd $WORK_DIR/text-generation-inference/server/vllm
-python setup.py bdist_egg
+TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
 wheel convert dist/vllm-0.0.0-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 vllm-0.0.0-py311-cp311-linux_x86_64.whl
 cp vllm-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+# awq
+cd $WORK_DIR/text-generation-inference/server
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX make build-awq
+cd $WORK_DIR/text-generation-inference/server/llm-awq/awq/kernels
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX python setup.py bdist_egg
+wheel convert dist/awq_inference_engine-0.0.0-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 awq_inference_engine-0.0.0-py311-cp311-linux_x86_64.whl
+cp awq_inference_engine-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+# eetq
+cd $WORK_DIR/text-generation-inference/server
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX make build-eetq
+cd $WORK_DIR/text-generation-inference/server/eetq
+TORCH_CUDA_ARCH_LIST=$NV_CC+PTX python setup.py bdist_egg
+wheel convert dist/EETQ-1.0.0b0-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 EETQ-1.0.0b0-py311-cp311-linux_x86_64.whl
+cp EETQ-1.0.0b0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # exllama_kernels
 cd $WORK_DIR/text-generation-inference/server/exllama_kernels
@@ -178,3 +203,7 @@ TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
 wheel convert dist/custom_kernels-0.0.0-py3.11-linux-x86_64.egg
 wheel tags --python-tag=cp311 custom_kernels-0.0.0-py311-cp311-linux_x86_64.whl
 cp custom_kernels-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+
+echo "***************************"
+echo "* COMPILE JOB SUCCESSFULL *"
+echo "***************************"
