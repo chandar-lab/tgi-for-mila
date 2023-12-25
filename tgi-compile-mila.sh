@@ -4,7 +4,7 @@
 #SBATCH --output=%x.%j.out
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
-#SBATCH --time=6:00:00
+#SBATCH --time=10:00:00
 set -e
 set -v
 
