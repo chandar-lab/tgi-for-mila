@@ -1,6 +1,18 @@
 
 # Release notes
 
+## Release 3
+
+_December 26th, 2023_
+
+Update to TGI version 1.3.4. This update includes upgrading
+flash-attention to version 2.4.1, as well as adding `peft`
+support and including the `exllamav2` and `megablocks` kernels.
+
+* **TGI version:** 1.3.4
+* **enabled features:** [bnb, accelerate, quantize, peft]
+* **Flash-attention version:** 2.4.1
+
 ## Release 2
 
 _October 12th, 2023_

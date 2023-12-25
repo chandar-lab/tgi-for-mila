@@ -9,8 +9,8 @@
 #SBATCH --time=2:59:00
 set -e
 
-TGI_VERSION='1.1.0'
-FLASH_ATTN_VERSION='2.3.2'
+TGI_VERSION='1.3.4'
+FLASH_ATTN_VERSION='2.4.1'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
@@ -28,7 +28,7 @@ module load gcc/9.3.0
 
 # Create enviorment
 eval "$(~/bin/micromamba shell hook -s posix)"
-micromamba create -y -p $TGI_TMP/pyenv -c pytorch -c nvidia -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=12.0.1' 'pytorch==2.0.1' 'pytorch-cuda=11.8' 'cudnn=8.8' 'openssl=3'
+micromamba create -y -p $TGI_TMP/pyenv -c pytorch -c "nvidia/label/cuda-12.1.0" -c conda-forge 'python=3.11' 'git-lfs=3.3' 'pyarrow=14.0.2' 'pytorch==2.1.1' 'pytorch-cuda=12.1' cuda-nvcc cuda-toolkit cuda-libraries-dev 'cudnn=8.8' 'openssl=3' 'ninja=1'
 micromamba activate $TGI_TMP/pyenv
 
 # install
@@ -36,7 +36,8 @@ pip install --no-index --find-links $RELEASE_DIR/python_deps \
   $RELEASE_DIR/python_ins/flash_attn-*whl $RELEASE_DIR/python_ins/vllm-*.whl \
   $RELEASE_DIR/python_ins/rotary_emb-*.whl $RELEASE_DIR/python_ins/dropout_layer_norm-*.whl \
   $RELEASE_DIR/python_ins/awq_inference_engine-*.whl $RELEASE_DIR/python_ins/EETQ-*.whl \
-  $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/custom_kernels-*.whl \
+  $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/exllamav2_kernels-*.whl \
+  $RELEASE_DIR/python_ins/custom_kernels-*.whl $RELEASE_DIR/python_ins/megablocks-*.whl \
   "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize]"
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 export LD_LIBRARY_PATH=$TGI_TMP/pyenv/lib:$LD_LIBRARY_PATH

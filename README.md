@@ -3,10 +3,9 @@
 Setups a runtime for https://github.com/huggingface/text-generation-inference, which can run nativly on
 Compute Canada and Mila clusters.
 
-
-* **TGI version:** 1.1.0
-* **enabled features:** [bnb, accelerate, quantize]
-* **Flash-attention version:** 2.3.2
+* **TGI version:** 1.3.4
+* **enabled features:** [bnb, accelerate, quantize, peft]
+* **Flash-attention version:** 2.4.1
 
 - [Compile release](#compile-release)
 - [Download model](#download-model)
@@ -274,10 +273,9 @@ https://github.com/huggingface/text-generation-inference offers a docker image o
 Best efforts are made to keep this variant of TGI as close to the docker image. However, some
 changes have been made:
 
-1. TGI Docker image uses flash-attention v2.3.0 with a fallback to flash-attention v1.0.9. Meaning both versions
+1. TGI Docker image uses flash-attention v2.4.1 with a fallback to flash-attention v1.0.9. Meaning both versions
   exists in the docker image. The older flash-attention exists to support older GPUs, however these are not used
   on Mila or Compute Canada, therefore they are not included. Also, it takes a really long time to
   compile flash-attention and two versions of flash-attention can only exist with some hacks.
-1. To include the latest fixes to flash-attention, v2.3.2 is used instead of v2.3.0.
-2. The version of some dependency packages, such as numpy, may have slighly different versions on
+1. The version of some dependency packages, such as numpy, may have slighly different versions on
   Compute Canada. This is because Compute Canada does not provide those exact versions in their wheelhouse.
