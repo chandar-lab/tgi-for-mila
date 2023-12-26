@@ -54,7 +54,7 @@ unzip $WORK_DIR/protoc-23.4-linux-x86_64.zip -d $WORK_DIR/.protoc
 export PATH="$WORK_DIR/.protoc/bin:$PATH"
 
 # Create dirs
-rm -rf $RELEASE_DIR
+#rm -rf $RELEASE_DIR
 mkdir -p $RELEASE_DIR/python_deps
 mkdir -p $RELEASE_DIR/python_ins
 mkdir -p $RELEASE_DIR/bin
@@ -77,6 +77,14 @@ pip download 'accelerate<0.26.0,>=0.25.0' # accelerate
 pip download 'peft<0.5.0,>=0.4.0' # peft
 pip download --no-deps 'poetry-core>=1.6.1' 'ninja' 'cmake' 'lit' 'packaging' # build dependencies
 pip download 'wheel' # required for `pip wheel --no-index --find-links $RELEASE_DIR/python_deps`
+
+# compile lit
+pip wheel lit-*.tar.gz
+rm lit-*.tar.gz
+
+# vllm dependencies
+pip download --no-deps 'ray>=2.5.1' 'xformers==0.0.23'
+pip download 'absl-py' 'jsonschema' 'fastapi' 'uvicorn[standard]' 'pydantic<2'
 
 ####
 # BUILD tgi
@@ -164,10 +172,14 @@ cp dropout_layer_norm-0.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 cd $WORK_DIR/text-generation-inference/server
 TORCH_CUDA_ARCH_LIST=$NV_CC make build-vllm-cuda
 cd $WORK_DIR/text-generation-inference/server/vllm
+sed -i 's/torch == 2.0.1/torch/g' pyproject.toml
+sed -i 's/torch == 2.0.1/torch/g' requirements.txt
+sed -i 's/xformers == 0.0.22/xformers ==  v0.0.23/g' requirements.txt
+python setup.py build
 python setup.py bdist_egg
-wheel convert dist/vllm-0.0.0-py3.11-linux-x86_64.egg
-wheel tags --python-tag=cp311 vllm-0.0.0-py311-cp311-linux_x86_64.whl
-cp vllm-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+wheel convert dist/vllm-0.2.1-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 vllm-0.2.1-py311-cp311-linux_x86_64.whl
+cp vllm-0.2.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # awq
 cd $WORK_DIR/text-generation-inference/server

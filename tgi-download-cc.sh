@@ -12,7 +12,7 @@ FLASH_ATTN_VERSION='2.4.1'
 
 # Default config
 if [ -z "${RELEASE_DIR}" ]; then
-    RELEASE_DIR=$HOME/tgi-release
+    RELEASE_DIR=$HOME/tgi-next
 fi
 if [ -z "${TGI_DIR}" ]; then
     TGI_DIR=$SCRATCH/tgi
@@ -39,7 +39,7 @@ pip install --no-index --find-links $RELEASE_DIR/python_deps \
   $RELEASE_DIR/python_ins/awq_inference_engine-*.whl $RELEASE_DIR/python_ins/EETQ-*.whl \
   $RELEASE_DIR/python_ins/exllama_kernels-*.whl $RELEASE_DIR/python_ins/exllamav2_kernels-*.whl \
   $RELEASE_DIR/python_ins/custom_kernels-*.whl $RELEASE_DIR/python_ins/megablocks-*.whl \
-  "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize]"
+  "$RELEASE_DIR/python_ins/text_generation_server-$TGI_VERSION-py3-none-any.whl[bnb, accelerate, quantize, peft]"
 
 export PATH="$(realpath $RELEASE_DIR/bin/)":$PATH
 

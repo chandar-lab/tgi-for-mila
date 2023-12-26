@@ -160,9 +160,9 @@ cd $WORK_DIR/text-generation-inference/server
 TORCH_CUDA_ARCH_LIST=$NV_CC make build-vllm-cuda
 cd $WORK_DIR/text-generation-inference/server/vllm
 TORCH_CUDA_ARCH_LIST=$NV_CC python setup.py bdist_egg
-wheel convert dist/vllm-0.0.0-py3.11-linux-x86_64.egg
-wheel tags --python-tag=cp311 vllm-0.0.0-py311-cp311-linux_x86_64.whl
-cp vllm-0.0.0-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
+wheel convert dist/vllm-0.2.1-py3.11-linux-x86_64.egg
+wheel tags --python-tag=cp311 vllm-0.2.1-py311-cp311-linux_x86_64.whl
+cp vllm-0.2.1-cp311-cp311-linux_x86_64.whl $RELEASE_DIR/python_ins/
 
 # awq
 cd $WORK_DIR/text-generation-inference/server
