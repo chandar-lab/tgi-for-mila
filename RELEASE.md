@@ -1,6 +1,19 @@
 
 # Release notes
 
+## Release 3
+
+_April 11th, 2024_
+
+Update to TGI version 1.4.4, as well as adding `peft` and '`outlines` support,
+and including the `exllamav2` and `megablocks` kernels.
+
+On compute canada this also upgrades from `StdEnv/2020` to `StdEnv/2023`.
+
+* **TGI version:** 1.4.4
+* **enabled features:** [bnb, accelerate, quantize, peft, outlines]
+* **Flash-attention version:** 2.3.2
+
 ## Release 2
 
 _October 12th, 2023_
